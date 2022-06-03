@@ -17,6 +17,8 @@ Then you have to make sure your package index is up to date `# apt update` befor
 `# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk kernel-package uuid-runtime c-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
 ## Build
+- Change desired kernel release in ./build-kernel.sh
+- Change your github email address in ./build-kernel.sh
 - Just run `sudo ./build.sh`.
 - Due to reasons beyond my control, press and hold "Enter" during the kernel build process.
 - Completed builds output to the project root directory as `Debian-powerpc-unstable-YYYYMMDD-HHMM-GPT.img.gz`
