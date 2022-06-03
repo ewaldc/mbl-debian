@@ -4,7 +4,7 @@
 
 This project's build.sh generates an adapted Debian Sid/Unstable (As it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian to fix a few defects and to integrate my custom kernels for MyBookLive.  All credits for the Debian image go to Christian Lamparter aka chunkeey.
 
-Big parts of this generator code has been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
+Big parts of this generator code habe been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
 
 ## Requirements
 That you have a working and up-to-date Debian build (virtual) machine with 20GiB+ of free space and root access.
