@@ -13,13 +13,18 @@ DTS_DIR=dts
 DTS_MBL=dts/wd-mybooklive.dts
 DTB_MBL=dts/wd-mybooklive.dtb
 LINUX_DIR=linux
-LINUX_VER=v5.17-rc8
+#LINUX_VER=v5.17-rc8
+#LINUX_VER=v5.4.196
+LINUX_VER=v5.17.12
+GIT_EMAIL_ADDRESS="ewald_comhaire@hotmail.com"
 
 # This "cached-linux" serves as a local cache for a unmodified linux.git
 LINUX_LOCAL="cached-linux"
 LINUX_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
 OURPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+echo "Building Kernel"
 
 rm -rf "$LINUX_DIR"
 
@@ -35,9 +40,11 @@ fi
 
 if [[ -d "$OURPATH/overlay/kernel/" ]]; then
 	echo "Applying kernel overlay"
-	cp -vr "$OURPATH/overlay/kernel/.config" "$OURPATH/overlay/kernel/*" "$LINUX_DIR" || echo bad
+	cp -vr "$OURPATH/overlay/kernel/.config" $OURPATH/overlay/kernel/* "$LINUX_DIR" || echo bad
 fi
 
+
+git config --global user.email ${GIT_EMAIL_ADDRESS}
 if [[ -d "$OURPATH/patches/kernel/" ]]; then
 	for file in $OURPATH/patches/kernel/*.patch; do
 		echo "Applying kernel patch $file"
@@ -58,4 +65,4 @@ dtc -O dtb -i "$DTS_DIR" -S 32768 -o "$DTB_MBL" "$DTB_MBL.tmp"
 #make-kpkg kernel-image --revision 1.00 --arch=powerpc --cross-compile powerpc-linux-gnu- )
 #make deb-pkg ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- -j8
 #
-(cd $LINUX_DIR; make deb-pkg ARCH="$ARCH" CROSS_COMPILE=powerpc-linux-gnu- -j$PARALLEL )
+(cd $LINUX_DIR; make deb-pkg ARCH="$ARCH" CROSS_COMPILE=powerpc-linux-gnu- -j${PARALLEL} )
