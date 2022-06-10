@@ -54,6 +54,9 @@ to_k()
 
 echo "Building Image '$IMAGE'"
 
+# Add powerpc architecture
+dpkg --add-architecture powerpc
+
 # Test if all the required tool are installed
 declare -a NEEDED=("/usr/bin/uuidgen uuid-runtime" "$QEMU_STATIC qemu-user-static" "$MKIMAGE u-boot-tools"
 	"$DTC device-tree-compiler" "$KPARTX kpartx" "$PARTPROBE parted"
@@ -374,3 +377,6 @@ if [[ "$DO_COMPRESS" ]]; then
 		gzip "$IMAGE"
 	fi
 fi
+
+# Remove powerpc architecture
+dpkg --remove -architecture powerpc

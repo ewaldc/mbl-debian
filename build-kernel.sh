@@ -13,42 +13,61 @@ DTS_DIR=dts
 DTS_MBL=dts/wd-mybooklive.dts
 DTB_MBL=dts/wd-mybooklive.dtb
 LINUX_DIR=linux
+LINUX_VER=v5.17.14
 #LINUX_VER=v5.17-rc8
 #LINUX_VER=v5.4.196
-LINUX_VER=v5.17.12
+#LINUX_VER=v5.17
 GIT_EMAIL_ADDRESS="ewald_comhaire@hotmail.com"
 
 # This "cached-linux" serves as a local cache for a unmodified linux.git
 LINUX_LOCAL="cached-linux"
-LINUX_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+#LINUX_GIT=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+LINUX_GIT="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 
 OURPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-echo "Building Kernel"
+echo "Building Kernel $LINUX_VER"
 
 rm -rf "$LINUX_DIR"
 
 if [[ -d "$LINUX_LOCAL" ]]; then
 	git clone --local "$LINUX_LOCAL" "$LINUX_DIR"
+elif [[ "$LINUX_VER" ]]; then
+	#git clone "$LINUX_GIT" "$LINUX_DIR"
+	#(cd "$LINUX_DIR"; git checkout dev "$LINUX_VER")
+	git clone --single-branch --depth 1 --branch "$LINUX_VER" "$LINUX_GIT" "$LINUX_DIR"
+	(cd "$LINUX_DIR"; git checkout -B dev "$LINUX_VER")
 else
 	git clone "$LINUX_GIT" "$LINUX_DIR"
 fi
 
-if [[ "$LINUX_VER" ]]; then
-	(cd "$LINUX_DIR"; git checkout -b dev "$LINUX_VER")
-fi
+#if [[ "$LINUX_VER" ]]; then
+#	(cd "$LINUX_DIR"; git checkout -B dev "$LINUX_VER")
+#	(cd "$LINUX_DIR"; git checkout dev "$LINUX_VER")
+#fi
+
+MAJOR=$(echo $LINUX_VER | cut -d. -f1)
+MINOR=$(echo $LINUX_VER | cut -d. -f2)
+SUBVERSION=$(echo $LINUX_VER | cut -d. -f3)
 
 if [[ -d "$OURPATH/overlay/kernel/" ]]; then
-	echo "Applying kernel overlay"
-	cp -vr "$OURPATH/overlay/kernel/.config" $OURPATH/overlay/kernel/* "$LINUX_DIR" || echo bad
+	CONFIGPATH="$OURPATH/overlay/kernel/${LINUX_VER}"
+	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/overlay/kernel/${MAJOR}.${MINOR}"; fi
+	echo "Applying kernel overlay ${CONFIGPATH}"
+	cp -vr "${CONFIGPATH}/.config" $OURPATH/overlay/kernel/* "$LINUX_DIR" || echo bad
 fi
 
 
 git config --global user.email ${GIT_EMAIL_ADDRESS}
 if [[ -d "$OURPATH/patches/kernel/" ]]; then
-	for file in $OURPATH/patches/kernel/*.patch; do
+	PATCHPATH="$OURPATH/patches/kernel/${LINUX_VER}"
+	echo "Testing kernel patches from ${PATCHPATH}"
+	if [[ ! -d "$PATCHPATH" ]]; then PATCHPATH="$OURPATH/patches/kernel/${MAJOR}.${MINOR}"; fi
+	echo "Applying kernel patches from ${PATCHPATH}"
+	for file in ${PATCHPATH}/*.patch; do
 		echo "Applying kernel patch $file"
 		( cd $LINUX_DIR; git am $file )
+		#( cd $LINUX_DIR; git apply $file )
 	done
 fi
 
