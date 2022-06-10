@@ -53,7 +53,8 @@ SUBVERSION=$(echo $LINUX_VER | cut -d. -f3)
 if [[ -d "$OURPATH/overlay/kernel/" ]]; then
 	CONFIGPATH="$OURPATH/overlay/kernel/${LINUX_VER}"
 	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/overlay/kernel/${MAJOR}.${MINOR}"; fi
-	echo "Applying kernel overlay ${CONFIGPATH}"
+	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/overlay/kernel"; fi
+	echo "Applying kernel overlay (includes config file) from ${CONFIGPATH}"
 	cp -vr "${CONFIGPATH}/.config" $OURPATH/overlay/kernel/* "$LINUX_DIR" || echo bad
 fi
 
@@ -63,6 +64,7 @@ if [[ -d "$OURPATH/patches/kernel/" ]]; then
 	PATCHPATH="$OURPATH/patches/kernel/${LINUX_VER}"
 	echo "Testing kernel patches from ${PATCHPATH}"
 	if [[ ! -d "$PATCHPATH" ]]; then PATCHPATH="$OURPATH/patches/kernel/${MAJOR}.${MINOR}"; fi
+	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/patches/kernel"; fi
 	echo "Applying kernel patches from ${PATCHPATH}"
 	for file in ${PATCHPATH}/*.patch; do
 		echo "Applying kernel patch $file"

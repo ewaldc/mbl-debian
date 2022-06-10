@@ -17,11 +17,21 @@ Then you have to make sure your package index is up to date `# apt update` befor
 `# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk kernel-package uuid-runtime c-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
 ## Build
-- Change desired kernel release in ./build-kernel.sh
-- Change your github email address in ./build-kernel.sh
+- Change desired kernel release in ./build-kernel.sh (LINUX_VER variable)
+- Change your github email address in ./build-kernel.sh (GIT_EMAIL_ADDRESS variable)
 - Just run `sudo ./build.sh`.
 - Due to reasons beyond my control, press and hold "Enter" during the kernel build process.
 - Completed builds output to the project root directory as `Debian-powerpc-unstable-YYYYMMDD-HHMM-GPT.img.gz`
+
+## Tuning the kernel build - adding kernels to an existing build
+- The kernel config file is located in `overlay/kernel`, kernel patches are located in `patches/kernel`
+- Within these locations the kernel build script will look in sequence to:
+    - ${LINUX_VER} folder (e.g. `v5.17.14`)
+    - v${MAJOR}.${MINOR}  (e.g. `v5.17`)
+    - the location directory itself
+    to find the kernel config file and/or patches.  This means you can override the generic config/patchset with more version dependent ones if required.
+- Just run `sudo ./build-kernel.sh` to create a new kernel build.
+- By default, each kernel build results in a set of Debian packages: linux-headers, linux-image and linux-libc-dev (e.g. `linux-image-5.17.14+_5.17.14+-1_powerpc.deb`).  These can be copied to your MBL and intalled like any Debian package
 
 ## Installing
 There are multiple ways to get the image onto the device.
@@ -60,4 +70,8 @@ password login for root, when no authorized_keys file is placed in `/root/.ssh/`
 - The default root password is "debian" (see ROOT_PASSWORD variable in the build.sh script).
 - The default hostname is "mbl-debian".
 - This image will initialize the swap on the first boot and resize the GPT to fit the HDD.
-- All Debian packages are directly pulled from the debian server. This is great since, the programs are up-to-date, but they can also be problems because of this. Be prepared to handle/fix or work-around your own problems. 
+- All Debian packages are directly pulled from the debian server. This is great since, the programs are up-to-date, but they can also be problems because of this. Be prepared to handle/fix or work-around your own problems.
+
+## KNOWN ISSUES
+- There are two SSH packages installed: DROPBEAR and OpenSSH, rendering DROPBEAR inoperable. Ideally DROPBEAR should be used but OpenSSH is pulled in via a package dependency.   You can use COCKPIT to fix this manually.
+- The BOOT partition has limited space.  There is only room for two to three kernels,
