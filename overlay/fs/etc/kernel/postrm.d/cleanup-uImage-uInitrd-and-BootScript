@@ -16,9 +16,8 @@ if [[ ! -e "/boot/boot/boot.scr" ]]; then
 	>&2 echo "WARNING: With the removal of this kernel, the system will now no longer be able to boot. no backup kernel found!"
 else
 	# No, but maybe the backup?
-	[[ -e "/boot/boot/boot-old.scr" ]] || {
+	[[ -e "/boot/boot/boot-old.scr" ]] && {
 		>&2 echo "Info: Removing now stale backup boot kernel script (boot-old.scr)"
-		rm "/boot/boot/boot-old.scr"
+		rm -f "/boot/boot/boot-old.scr"
 	}
 fi
-
