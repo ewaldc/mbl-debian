@@ -26,8 +26,8 @@ Then you have to make sure your package index is up to date `# apt update` befor
 ## Tuning the kernel build - adding kernels to an existing build
 - The kernel config file is located in `overlay/kernel`, kernel patches are located in `patches/kernel`
 - Within these locations the kernel build script will look in sequence to:
-    - ${LINUX_VER} folder (e.g. `v5.17.14`)
-    - v${MAJOR}.${MINOR}  (e.g. `v5.17`)
+    - `${LINUX_VER}` folder (e.g. `v5.17.14`)
+    - `v${MAJOR}.${MINOR}`  (e.g. `v5.17`)
     - the location directory itself
     to find the kernel config file and/or patches.  This means you can override the generic config/patchset with more version dependent ones if required.
 - Just run `sudo ./build-kernel.sh` to create a new kernel build.
