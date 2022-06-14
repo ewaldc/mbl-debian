@@ -154,8 +154,8 @@ DEVICE="/dev/mapper/${DEVICE}"
 BOOTP=${DEVICE}p1
 ROOTP=${DEVICE}p2
 
-# Kernel build
-./build-kernel.sh
+# Build Kernel from scratch/clean
+./build-kernel.sh --clean
 
 # Make filesystems
 
