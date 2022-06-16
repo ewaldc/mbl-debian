@@ -13,10 +13,10 @@ DTS_DIR=dts
 DTS_MBL=dts/wd-mybooklive.dts
 DTB_MBL=dts/wd-mybooklive.dtb
 LINUX_DIR=linux
-LINUX_VER=v5.17.14
-#LINUX_VER=v5.17-rc8
-#LINUX_VER=v5.4.196
-#LINUX_VER=v5.17
+LINUX_VER=${1:-5.17.14}
+#LINUX_VER=5.17-rc8
+#LINUX_VER=5.4.196
+#LINUX_VER=5.17
 MAJOR=$(echo $LINUX_VER | cut -d. -f1)
 MINOR=$(echo $LINUX_VER | cut -d. -f2)
 SUBVERSION=$(echo $LINUX_VER | cut -d. -f3)
@@ -30,7 +30,6 @@ LINUX_GIT="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 
 OURPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-
 echo "Building Kernel $LINUX_VER"
 
 if [[ $# -eq 1 ]] && [[ "$1" == "--clean" ]]; then
@@ -42,8 +41,8 @@ if [[ $# -eq 1 ]] && [[ "$1" == "--clean" ]]; then
 	elif [[ "$LINUX_VER" ]]; then
 		#git clone "$LINUX_GIT" "$LINUX_DIR"
 		#(cd "$LINUX_DIR"; git checkout dev "$LINUX_VER")
-		git clone --single-branch --depth 1 --branch "$LINUX_VER" "$LINUX_GIT" "$LINUX_DIR"
-		(cd "$LINUX_DIR"; git checkout -B dev "$LINUX_VER")
+		git clone --single-branch --depth 1 --branch "v${LINUX_VER}" "$LINUX_GIT" "$LINUX_DIR"
+		(cd "$LINUX_DIR"; git checkout -B dev "v${LINUX_VER}")
 	else
 		git clone "$LINUX_GIT" "$LINUX_DIR"
 	fi
@@ -65,15 +64,18 @@ if [[ $# -eq 1 ]] && [[ "$1" == "--clean" ]]; then
 		done
 	fi
 else # cleanup Debian package directory
+	rm -rf "$LINUX_DIR/debian"
 	(cd $LINUX_DIR; git clean -f)
 fi
+# Remove Debian packages for the current request version
+rm -f linux-*_${LINUX_VER}*
 
 if [[ -d "$OURPATH/overlay/kernel/" ]]; then
 	CONFIGPATH="$OURPATH/overlay/kernel/${LINUX_VER}"
 	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/overlay/kernel/${MAJOR}.${MINOR}"; fi
 	if [[ ! -d "$CONFIGPATH" ]]; then CONFIGPATH="$OURPATH/overlay/kernel"; fi
 	echo "Applying kernel overlay (includes config file) from ${CONFIGPATH}"
-	cp -vr "${CONFIGPATH}/.config" $OURPATH/overlay/kernel/* "$LINUX_DIR" || echo bad
+	cp -vr "${CONFIGPATH}/.config" "$OURPATH/overlay/kernel/"* "$LINUX_DIR" || echo bad
 fi
 
 
