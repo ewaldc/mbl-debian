@@ -1,35 +1,27 @@
 #!/bin/bash
 
+process_options(){
+	for OPT in "$@"; do
+		case "$OPT" in
+			--type=*)			KERNEL_BUILD="${OPT#*=}"; shift;;
+			--version=*)	LINUX_KERNEL_VERSION="${OPT#*=}"; shift;;
+			*) 						echo "Option $OPT not supported"; exit 1;;
+		esac
+	done
+}
+
+cleanup_mappings(){
+	echo "Cleanup loop devices and mappings"
+	$KPARTX -d "$IMAGE"
+	dmsetup info ${LO_DEVICE}p1 2>/dev/null && dmsetup remove -f ${LO_DEVICE}p1
+	dmsetup info ${LO_DEVICE}p2 2>/dev/null && dmsetup remove -f ${LO_DEVICE}p2
+	/sbin/losetup -D
+}
+
 # set -xe
+source ./build.env
+process_options
 
-OURPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-RELEASE=unstable
-ROOT_PASSWORD=debian
-DISTRIBUTION=Debian
-DATE=$(date +%Y%m%d-%H%M)
-
-ARCH=powerpc
-TARGET=mbl-debian
-SOURCE=http://ftp.ports.debian.org/debian-ports
-SOURCE_SRC=http://ftp.debian.org/debian
-
-QEMU_STATIC=/usr/bin/qemu-ppc-static
-MKIMAGE=/usr/bin/mkimage
-DTC=/usr/bin/dtc
-KPARTX=/sbin/kpartx
-PARTPROBE=/sbin/partprobe
-DEBOOTSTRAP=/usr/sbin/debootstrap
-
-DO_COMPRESS=1
-
-# HDD Image
-BOOTSIZE=285212672   # 272 MiB
-ROOTSIZE=4152360960  # ~ 4GiB
-SWAPFILESIZE=768     # in MiB
-BOOTUUID=$(uuidgen)
-ROOTPARTUUID=$(uuidgen)
-ROOTUUID=$(uuidgen)
 IMAGESIZE=$(("$BOOTSIZE" + "$ROOTSIZE" + (4 * 1024 * 1024 )))
 
 IMAGE="$DISTRIBUTION-$ARCH-$RELEASE-$DATE.img"
@@ -41,6 +33,7 @@ IMAGE="$DISTRIBUTION-$ARCH-$RELEASE-$DATE.img"
 # But we are building on x86/ARM with little endian so we,
 # can't use the established mdadm to make the RAID.
 MAKE_RAID=
+
 
 die() {
 	(>&2 echo "$@")
@@ -55,7 +48,7 @@ to_k()
 echo "Building Image '$IMAGE'"
 
 # Add powerpc architecture
-dpkg --add-architecture powerpc
+dpkg --add-architecture $ARCH
 
 # Test if all the required tool are installed
 declare -a NEEDED=("/usr/bin/uuidgen uuid-runtime" "$QEMU_STATIC qemu-user-static" "$MKIMAGE u-boot-tools"
@@ -74,36 +67,6 @@ for packaged in "${NEEDED[@]}"; do
 	}
 done
 
-# Packages that are installed by debbootstrap - please note that
-# debootstrap package dependency isn't great...
-# Don't use tabs to align the entries! Debootstrap will choke and
-# complain about missing "strange number" dependencies.
-#
-# Some of these packages could be moved to INSTALL_PACKAGES,
-# others like binutils,gzip,u-boot-tools are necessary for
-# scripts that run before we can apt install packages...
-#
-DEBOOTSTRAP_INCLUDE_PACKAGES="gzip,u-boot-tools,device-tree-compiler,binutils,\
-        bzip2,locales,aptitude,file,xz-utils,initramfs-tools,fdisk,gdisk,\
-        console-common,console-setup,console-setup-linux,parted,e2fsprogs,\
-        dropbear,dropbear-initramfs,keyboard-configuration,ca-certificates,\
-        debian-archive-keyring,debian-ports-archive-keyring,mdadm,dmsetup,\
-        bsdextrautils,zstd,libubootenv-tool"
-
-# That's why the heavy lifting should be done by apt that will be run in the chroot
-APT_INSTALL_PACKAGES="needrestart zip unzip vim screen htop ethtool iperf3 \
-	openssh-server netcat-traditional net-tools curl wget apt systemd-timesyncd \
-	openssl smartmontools hdparm smartmontools cryptsetup \
-	nfs-common nfs-kernel-server rpcbind samba rsync telnet \
-	btrfs-progs xfsprogs exfatprogs ntfs-3g dosfstools \
-	bcache-tools duperemove fuse thin-provisioning-tools \
-	udisks2 udisks2-btrfs udisks2-lvm2 unattended-upgrades \
-	cockpit cockpit-packagekit cockpit-networkmanager \
-	cockpit-storaged watchdog lm-sensors uuid-runtime"
-
-DTS_DIR=dts
-LINUX_DIR=linux
-
 # Cleanup
 
 [ -d "$TARGET" ] && {
@@ -117,7 +80,7 @@ rm -rf "$TARGET" "$IMAGE"
 
 fallocate -l "$IMAGESIZE" "$IMAGE"
 
-trap "/bin/umount -A -R -l $TARGET || echo unmounted; $KPARTX -d $IMAGE || echo ''; /sbin/losetup -D; rm -rf $TARGET linux-*.deb" EXIT
+trap "/bin/umount -A -R -l $TARGET || cleanup_mappings || echo ''; rm -rf $TARGET linux-*.deb" EXIT
 
 /sbin/gdisk "$IMAGE" <<-GPTEOF
 	o
@@ -147,15 +110,16 @@ DEVICE=$(/sbin/losetup -f --show "$IMAGE")
 
 $PARTPROBE
 
-DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9])p.*/\1/g' | head -1)
+LO_DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9])p.*/\1/g' | head -1)
 sleep 1
 
-DEVICE="/dev/mapper/${DEVICE}"
+DEVICE="/dev/mapper/${LO_DEVICE}"
 BOOTP=${DEVICE}p1
 ROOTP=${DEVICE}p2
 
+echo "BOOTP: $BOOTP ROOTP:$ROOTP"
 # Build Kernel from scratch/clean
-./build-kernel.sh --clean
+./build-kernel.sh --type=${KERNEL_BUILD_TYPE} --target=${KERNEL_BUILD_TARGET} --version=${LINUX_KERNEL_VERSION}
 
 # Make filesystems
 
@@ -357,8 +321,8 @@ sleep 2
 	dd if=root-md1-raid1 of="$ROOTP" bs=1k seek=$(( $ROOTSIZE / 1024 - 64)) status=noxfer
 }
 
-$KPARTX -d "$IMAGE"
-/sbin/losetup -D
+# Clean up loop devices and device mappings
+cleanup_mappings
 
 [[ $MAKE_RAID ]] && {
 	# Do this at the end. This is because if we start with the
@@ -388,5 +352,4 @@ if [[ "$DO_COMPRESS" ]]; then
 fi
 
 # Remove powerpc architecture
-dpkg --remove -architecture powerpc
-
+#dpkg --remove -architecture ${ARCH}
