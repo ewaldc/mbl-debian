@@ -110,7 +110,7 @@ DEVICE=$(/sbin/losetup -f --show "$IMAGE")
 
 $PARTPROBE
 
-LO_DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9])p.*/\1/g' | head -1)
+LO_DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9]+)p.*/\1/g' | head -1)
 sleep 1
 
 DEVICE="/dev/mapper/${LO_DEVICE}"
