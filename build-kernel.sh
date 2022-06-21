@@ -11,7 +11,7 @@ process_options(){
 	for OPT in "$@"; do
 		case "$OPT" in
 			--type=*)			KERNEL_BUILD_TYPE="${OPT#*=}"; shift;;
-			--version=*)	LINUX_KERNEL_VERSION="${OPT#*=}"; shift;;
+			--version=*)	LINUX_KERNEL_VERSION="${OPT#*=}"; KERNEL_BUILD_TYPE="clean"; shift;;
 			--target=*)		KERNEL_BUILD_TARGET="${OPT#*=}"; shift;;
 			*) 						echo "Option $opt not supported"; exit 1;;
 		esac
@@ -19,7 +19,7 @@ process_options(){
 }
 
 process_options
-LINUX_VER=${LINUX_KERNEL_VERSION:-5.17.14}
+LINUX_VER=${LINUX_KERNEL_VERSION:-5.17.15}
 
 echo "Building Kernel $LINUX_VER"
 
