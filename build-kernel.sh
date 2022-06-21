@@ -18,7 +18,7 @@ process_options(){
 	done
 }
 
-process_options
+process_options "$@"
 LINUX_VER=${LINUX_KERNEL_VERSION:-5.17.15}
 
 echo "Building Kernel $LINUX_VER"
