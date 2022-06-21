@@ -7,32 +7,37 @@ This project's build.sh generates an adapted Debian Sid/Unstable (As it still ha
 Big parts of this generator code habe been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
 
 ## Requirements
-That you have a working and up-to-date Debian build (virtual) machine with 20GiB+ of free space and root access.
-If this requirement have been met, you need to add the powerpc architecture with:
-
-`# dpkg --add-architecture powerpc`
+A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space and root access (preferred).
+Alternatively, any recent Debian or Ubuntu system will work (e.g. Linux Mint) too, but might not be as clean (the scripts currently remove all loop devices so that may impact your system). 
 
 Then you have to make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
 
 `# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk kernel-package uuid-runtime c-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
+## Preparation and personalization
+In "./build.env"
+- Provide your GitHub email address: GIT_EMAIL_ADDRESS (mandatory)
+- Change the desired kernel release: LINUX_KERNEL_VERSION (optional)
+- Add/delete packages to DEBOOTSTRAP_INCLUDE_PACKAGES and APT_INSTALL_PACKAGES (optional)
+- Change root password : ROOT_PASSWORD (optional)
+- Change data format: DATE (optional)
+
 ## Build
-- Change desired kernel release in ./build-kernel.sh (LINUX_VER variable)
-- Change your github email address in ./build-kernel.sh (GIT_EMAIL_ADDRESS variable)
 - Just run `sudo ./build.sh`. 
-- Due to reasons beyond my control, press and hold "Enter" during the kernel build process.
 - Completed builds output to the project root directory as `Debian-powerpc-unstable-YYYYMMDD-HHMM-GPT.img.gz`
 
-## Tuning the kernel build - adding or rebuild kernels/kernel versions to an existing build
+## Advanced customization
 - The kernel config file is located in `overlay/kernel`, kernel patches are located in `patches/kernel`
 - Within these locations the kernel build script will look in sequence to:
     - `${LINUX_VER}` folder (e.g. `5.17.14`)
-    - `v${MAJOR}.${MINOR}`  (e.g. `5.17`)
+    - `${MAJOR}.${MINOR}`  (e.g. `5.17`)
     - the location directory itself
     to find the kernel config file and/or patches.  This means you can override the generic config/patchset with more version dependent ones if required.
-- Run `sudo ./build-kernel.sh` to rebuild the kernel that is already checked out.  An updated Debian Kernel package will be created.
-- Run `sudo ./build-kernel.sh --clean` to erase the "linux" directory, do a fresh git checkout and perform a new kernel build.
-- By default, each kernel build results in a set of Debian packages: linux-headers, linux-image and linux-libc-dev (e.g. `linux-image-5.17.14+_5.17.14+-1_powerpc.deb`).  These can be copied to your MBL and intalled like any Debian package
+    It also means you can have different config files for different kernel versions 
+- Run `sudo ./build-kernel.sh --type=rebuild` to only rebuild the kernel that is already checked out (versus whole image rebuild).  An updated Debian Kernel package will then be created (compared to a new compressed image).
+- Run `sudo ./build-kernel.sh --type=clean` to erase the "linux" directory, do a fresh git checkout and perform a new kernel build of the same version as the image build.  By default, each kernel build results in a set of Debian packages: linux-headers, linux-image and linux-libc-dev (e.g. `linux-image-5.17.14+_5.17.14+-1_powerpc.deb`).  These can be copied to your MBL and intalled like any Debian package
+- Run `sudo ./build-kernel.sh --target=uImage` to build a uImage rather than to the Debian Packages mentioned above (the default)
+- Run `sudo ./build-kernel.sh --version=<version>` to just build a specific kernel version without rebuilding the whole image (will do a "clean" type build)
 
 ## Installing
 There are multiple ways to get the image onto the device.
@@ -77,6 +82,6 @@ password login for root, when no authorized_keys file is placed in `/root/.ssh/`
 - There are two SSH packages installed: DROPBEAR and OpenSSH, rendering DROPBEAR inoperable. Ideally DROPBEAR should be used but OpenSSH is pulled in via a package dependency.   You can use COCKPIT to fix this manually.
 
 ## RECENT CHANGES
-- The BOOT partition has been more than doubled in size.
+- The BOOT partition is now 256MB in size and can fit multiple kernels.
 - The NOR flash is now working (fw_printenv, fw_setenv)
 
