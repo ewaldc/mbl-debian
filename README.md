@@ -12,7 +12,7 @@ Alternatively, any recent Debian or Ubuntu system will work (e.g. Linux Mint) to
 
 Then you have to make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
 
-`# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk uuid-runtime rsync zerofree gcc-10-powerpc-linux-gnu gcc-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
+`# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk uuid-runtime rsync zerofree bison flex libssl-dev gcc-10-powerpc-linux-gnu gcc-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
 ## Preparation and personalization
 In "./build.env"
