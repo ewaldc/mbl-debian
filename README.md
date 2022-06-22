@@ -7,7 +7,7 @@ This project's build.sh generates an adapted Debian Sid/Unstable (As it still ha
 Big parts of this generator code habe been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
 
 ## Requirements
-A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space and root access (preferred).
+A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space, 4GB of memory and root access (preferred).
 Alternatively, any recent Debian or Ubuntu system will work (e.g. Linux Mint) too, but might not be as clean (the scripts currently remove all loop devices so that may impact your system). 
 
 Then you have to make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
