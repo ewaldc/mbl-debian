@@ -2,15 +2,19 @@
 
 ## Introduction
 
-This project's build.sh generates an adapted Debian Sid/Unstable (As it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian to fix a few defects and to integrate my custom kernels for MyBookLive.  All credits for the Debian image go to Christian Lamparter aka chunkeey.
+This project's build.sh generates an adapted Debian Sid/Unstable (as it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian to fix a few defects and to integrate my custom kernels for MyBookLive.  All credits for the Debian image go to Christian Lamparter aka chunkeey.
 
-Big parts of this generator code habe been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
+Big parts of this generator code have been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
+
+## Expectations/Warnings
+
+The current build process uses Debian Sid/Unstable, which is not only a possibly unstable build but also a frequenty changing release.  Hence it is very well possible to have a perfectly running build one day and a bad, eventually non-booting, image the next.
 
 ## Requirements
-A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space, 4GB of memory and root access (preferred).
+A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space, 4GB of memory and root access (preferred).   With less than 4GB of memory there will most likely be errors during the Git clone of the Linux Kernel (might be resolved with setting GIT parameters).
 Alternatively, any recent Debian or Ubuntu system will work (e.g. Linux Mint) too, but might not be as clean (the scripts currently remove all loop devices so that may impact your system). 
 
-Then you have to make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
+To ensure your VM or system has all the needed build packages, make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
 
 `# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk uuid-runtime rsync zerofree bison flex libssl-dev gcc-10-powerpc-linux-gnu gcc-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
