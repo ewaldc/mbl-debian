@@ -12,18 +12,18 @@ First, build a kernel with all hardware dependend drivers as static modules. Use
 Install this kernel as /boot/uImage. 
 
 Copy [uInitrd-generic](../../../raw/master/initramfs/uInitrd-generic) to /boot on the MBL, create a symlink to uInitrd and then reboot
-`
+```
 cd /boot
 ln -sf uInitrd-generic uInitrd
 systemctl reboot
-`
+```
 
 ## Customizing generic initramfs
 
 First download [initrd.img-generic](../../../raw/master/initramfs/uInitrd-generic) to e.g. /root
 Use unmkinitramfs to unpack the cpio archive, the modify the files.
 Afterward, repack with cpio, compress with either gzip or z-standard and create an uInitrd image. 
-`
+```
 cd /root
 mkdir initramfs
 unmkinitramfs uInitrd-generic initramfs
@@ -34,7 +34,7 @@ cd ..
 /usr/bin/mkimage -A powerpc -T ramdisk -C none -n "MyBook Live Ramdisk - Generic" -d uInitrd-generic-zst /boot/uInitrd-generic-zst
 cd /boot
 ln -sf uInitrd-generic-zst uInitrd
-`
+```
 
 ## KNOWN ISSUES
 - Support for UUID based root devices in the kernel commandline is pre-enabled but still requires a few modifications
