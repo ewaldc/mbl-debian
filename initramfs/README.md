@@ -20,17 +20,24 @@ systemctl reboot
 
 ## Customizing generic initramfs
 
-First download [initrd.img-generic](https://github.com/ewaldc/mbl-debian/blob/master/initramfs/uInitrd-generic) to e.g. /root
-Use unmkinitramfs to unpack the cpio archive e.g. to /root
+First download [initrd.img-generic](../../../raw/master/initramfs/uInitrd-generic) to e.g. /root
+Use unmkinitramfs to unpack the cpio archive, the modify the files.
+Afterward, repack with cpio, compress with either gzip or z-standard and create an uInitrd image. 
 `
 cd /root
 mkdir initramfs
-unmkinitramfs custom-ramfs.cpio /tmp/r
-
+unmkinitramfs uInitrd-generic initramfs
+cd initramfs
+# Modify files
+find . -print0 | cpio --null --create --verbose --format=newc | zstd > ../uInitrd-generic-zst
+cd ..
+/usr/bin/mkimage -A powerpc -T ramdisk -C none -n "MyBook Live Ramdisk - Generic" -d uInitrd-generic-zst /boot/uInitrd-generic-zst
+cd /boot
+ln -sf uInitrd-generic-zst uInitrd
 `
 
 ## KNOWN ISSUES
-- Support for UUID based root devices in the kernel commandline is pre-enabled but not yet working
+- Support for UUID based root devices in the kernel commandline is pre-enabled but still requires a few modifications
 
 ## RECENT CHANGES
 
