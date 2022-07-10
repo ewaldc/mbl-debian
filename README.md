@@ -89,4 +89,5 @@ password login for root, when no authorized_keys file is placed in `/root/.ssh/`
 - The BOOT partition is now 256MB in size and can fit multiple kernels.
 - Add zerofree and rsync as packages
 - The NOR flash is now working (fw_printenv, fw_setenv)
+- Support for custom/small initramfs
 
