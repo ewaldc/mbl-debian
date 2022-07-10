@@ -11,7 +11,7 @@ While it supports dynamically loadable modules it is recommended to statically i
 First, build a kernel with all hardware dependend drivers as static modules. Use 'lsmod' after boot to find out which modules are loaded.
 Install this kernel as /boot/uImage. 
 
-Copy [uInitrd-generic](../initramfs/uInitrd-generic) to /boot on the MBL, create a symlink to uInitrd and then reboot
+Copy [uInitrd-generic](../raw/master/initramfs/uInitrd-generic) to /boot on the MBL, create a symlink to uInitrd and then reboot
 `
 cd /boot
 ln -sf uInitrd-generic uInitrd
