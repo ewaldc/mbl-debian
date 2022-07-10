@@ -8,16 +8,26 @@ While it supports dynamically loadable modules it is recommended to statically i
 
 ## Using generic initramfs
 
-Copy [uInitrd-generic]() to /boot on the MBL and create a symlink to uInitrd
-´´´
+First, build a kernel with all hardware dependend drivers as static modules. Use 'lsmod' after boot to find out which modules are loaded.
+Install this kernel as /boot/uImage. 
+
+Copy [uInitrd-generic](../blob/master/initramfs/uInitrd-generic) to /boot on the MBL, create a symlink to uInitrd and then reboot
+`
+cd /boot
 ln -sf uInitrd-generic uInitrd
 systemctl reboot
-´´´
+`
 
 ## Customizing generic initramfs
 
-Use unmkinitramfs to unpack the cpio archive
+First download [initrd.img-generic](https://github.com/ewaldc/mbl-debian/blob/master/initramfs/uInitrd-generic) to e.g. /root
+Use unmkinitramfs to unpack the cpio archive e.g. to /root
+`
+cd /root
+mkdir initramfs
+unmkinitramfs custom-ramfs.cpio /tmp/r
 
+`
 
 ## KNOWN ISSUES
 - Support for UUID based root devices in the kernel commandline is pre-enabled but not yet working
