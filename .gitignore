@@ -13,3 +13,4 @@ cached-linux/
 mbl-debian/
 *.img
 *.img.*
+*.iso
