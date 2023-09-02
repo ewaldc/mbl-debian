@@ -50,6 +50,11 @@ In "./config/build.env", it is required to at least review/change following sett
 - Change initial root password : `ROOT_PASSWORD` (optional)
 - Change date format: DATE (optional)
 
+Download the customized Debian 12 NETINST ISO image
+```
+(cd source; ./download_debian-12.0.0-powerpc-MBL-NETINST_iso.sh)
+```
+
 ## Build
 - Just run `sudo ./build.sh`. 
 - Completed builds output to the project root directory as `Debian-powerpc-unstable-YYYYMMDD-HHMM-GPT.img.gz`
