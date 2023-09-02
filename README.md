@@ -28,6 +28,12 @@ That said, Debian 12 for PowerPC remains an unsupported and largely untested rel
 At the same time, users retain the full flexibility to update the whole system to the very latest versions, update selected packages (e.g. for security reasons) or install specific versions of certain packages. 
 
 
+## Limitations
+
+At this time the customized MBL performance patches are only available for the Linux Kernel 5.4 LTS series.
+Work is being done to make these available on 5.15 LTS and 6.5 in anticipation of a late 2023 Kernel 6.x LTS release. 
+
+
 ## Requirements
 A working and up-to-date, Linux development/build virtual system with 20GiB+ of free space, 8GB of memory and root access (preferred).   With less than 4GB of memory there will most likely be errors during the Git clone of the Linux Kernel (might be resolved with setting GIT parameters).
 
