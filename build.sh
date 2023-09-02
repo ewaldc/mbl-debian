@@ -3,23 +3,45 @@
 process_options(){
 	for OPT in "$@"; do
 		case "$OPT" in
-			--type=*)			KERNEL_BUILD="${OPT#*=}"; shift;;
+			--type=*)		KERNEL_BUILD="${OPT#*=}"; shift;;
 			--version=*)	LINUX_KERNEL_VERSION="${OPT#*=}"; shift;;
-			*) 						echo "Option $OPT not supported"; exit 1;;
+			*) 				echo "Option $OPT not supported"; exit 1;;
 		esac
 	done
 }
 
-cleanup_mappings(){
+cleanup(){
 	echo "Cleanup loop devices and mappings"
-	$KPARTX -d "$IMAGE"
+	# Just in case it was not unmounted	
+	/bin/umount -f -A -R -l "$TARGET"
+
+	$KPARTX -f -d "$IMAGE"	# Force deletion
 	dmsetup info ${LO_DEVICE}p1 2>/dev/null && dmsetup remove -f ${LO_DEVICE}p1
 	dmsetup info ${LO_DEVICE}p2 2>/dev/null && dmsetup remove -f ${LO_DEVICE}p2
 	/sbin/losetup -D
+
+	# Clean up all left over loop back devices related to target
+	LOOP_DEVICES=$(losetup -a | grep "$TARGET"| grep '.img' | awk '{print $1}')
+	for DEVICE in $LOOP_DEVICES; do
+		$KPARTX -d -f $DEVICE
+		/usr/sbin/losetup -d $DEVICE 2>/dev/null
+	done
+
+	if [ -n "$SOURCE_ISO" ]; then # we have an ISO source
+		echo "Unmounting ISO source"
+		MOUNT_SRC=$(findmnt -n -o SOURCE /mnt/iso)
+		if [ -n "$MOUNT_SRC" ]; then
+		    umount -f $MOUNT_SRC
+		fi
+	fi
+	umount -f ${TARGET}/proc 2>/dev/null
+	umount -f ${TARGET}/sys 2>/dev/null
+	umount -f ${TARGET}/dev 2>/dev/null
+	umount -f ${TARGET}/mnt/iso 2>/dev/null
 }
 
 # set -xe
-source ./build.env
+source config/build.env
 process_options
 
 IMAGESIZE=$(("$BOOTSIZE" + "$ROOTSIZE" + (4 * 1024 * 1024 )))
@@ -57,10 +79,10 @@ declare -a NEEDED=("/usr/bin/uuidgen uuid-runtime" "$QEMU_STATIC qemu-user-stati
 	"/sbin/gdisk gdisk" "/sbin/fdisk fdisk" "/usr/sbin/chroot coreutils"
 	"/sbin/mkswap util-linux" "/usr/sbin/zerofree zerofree"
 	"/usr/bin/powerpc-linux-gnu-gcc gcc-powerpc-linux-gnu"
-	"/usr/bin/powerpc-linux-gnu-ld binutils-powerpc-linux-gnu")
+	"/usr/bin/powerpc-linux-gnu-ld binutils-powerpc-linux-gnu xorriso")
 
-for packaged in "${NEEDED[@]}"; do
-	set -- $packaged
+for PACKAGE in "${NEEDED[@]}"; do
+	set -- $PACKAGE
 
 	[ -r "$1" ] || {
 		die "Can't find '$1'. Please install '$2'"
@@ -80,7 +102,8 @@ rm -rf "$TARGET" "$IMAGE"
 
 fallocate -l "$IMAGESIZE" "$IMAGE"
 
-trap "/bin/umount -A -R -l $TARGET || cleanup_mappings || echo ''; rm -rf $TARGET linux-*.deb" EXIT
+trap "/bin/umount -A -R -l $TARGET || cleanup || echo ''; rm -rf $TARGET linux-*.deb" EXIT
+#trap "/bin/umount -A -R -l $TARGET || cleanup || echo ''; rm -rf $TARGET" EXIT
 
 /sbin/gdisk "$IMAGE" <<-GPTEOF
 	o
@@ -110,7 +133,7 @@ DEVICE=$(/sbin/losetup -f --show "$IMAGE")
 
 $PARTPROBE
 
-LO_DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9]+)p.*/\1/g' | head -1)
+LO_DEVICE=$($KPARTX -vas "$IMAGE" | sed -E 's/.*(loop[0-9])p.*/\1/g' | head -1)
 sleep 1
 
 DEVICE="/dev/mapper/${LO_DEVICE}"
@@ -118,6 +141,10 @@ BOOTP=${DEVICE}p1
 ROOTP=${DEVICE}p2
 
 echo "BOOTP: $BOOTP ROOTP:$ROOTP"
+echo "CONFIG_DIR $CONFIG_DIR WORKDIR $WORKDIR"
+
+#read -p "Press any key to resume ..."
+
 # Build Kernel from scratch/clean
 ./build-kernel.sh --type=${KERNEL_BUILD_TYPE} --target=${KERNEL_BUILD_TARGET} --version=${LINUX_KERNEL_VERSION}
 
@@ -142,28 +169,48 @@ dd if=/dev/zero of="$TARGET/.swapfile" bs=1M count="$SWAPFILESIZE"
 chmod 0600 "$TARGET/.swapfile"
 
 #prepare boot
+mkdir -p "$TARGET/tmp"
 mkdir -p "$TARGET/boot"
 mount "$BOOTP" "$TARGET/boot" -t ext2
 mkdir -p "$TARGET/boot/boot"
-cp dts/wd-mybooklive.dtb "$TARGET/boot/apollo3g.dtb"
-cp dts/wd-mybooklive.dtb.tmp "$TARGET/boot/apollo3g.dts"
+cp $CONFIG_DIR/dts/wd-mybooklive.dtb "$TARGET/boot/apollo3g.dtb"
+cp $CONFIG_DIR/dts/wd-mybooklive.dtb.tmp "$TARGET/boot/apollo3g.dts"
+if [ "$SSH_SERVER" == "openssh" ]; then APT_INSTALL_PACKAGES+=" openssh-server"; fi
 
 ROOTBOOT="UUID=$ROOTUUID"
 
 echo "$ROOTBOOT" > "$TARGET/boot/boot/root-device"
 
 # debootstap
-
-$DEBOOTSTRAP --no-check-gpg --foreign --include="$DEBOOTSTRAP_INCLUDE_PACKAGES" --exclude="powerpc-utils" --arch "$ARCH" "$RELEASE" "$TARGET" "$SOURCE"
+if [ -n "$SOURCE_ISO" ]; then # we have an ISO source
+    echo "ISO Source defined, mounting as loop device"
+    mkdir -p /mnt/iso
+    MOUNT_SRC=$(findmnt -n -o SOURCE /mnt/iso)
+    if [ -n "$MOUNT_SRC" ]; then
+        umount -f $MOUNT_SRC
+    fi
+    mount -o loop,ro $SOURCE_ISO /mnt/iso
+    #$MULTISTRAP -f "$MULTISTRAP_CONFIG" -a "$ARCH" -d "$TARGET"
+    $DEBOOTSTRAP --no-check-gpg --foreign --include="$DEBOOTSTRAP_INCLUDE_PACKAGES" --exclude="powerpc-utils" --arch "$ARCH" "$RELEASE" "$TARGET" "file:///mnt/iso"
+	mkdir -p "$TARGET/usr/share/dpkg"
+	cp $SOURCE_ISO $TARGET/usr/share/dpkg
+elif [ -n "$SOURCE_DIR" ]; then
+    #$MULTISTRAP -f "$MULTISTRAP_CONFIG" -a "$ARCH" -d "$TARGET"
+    $DEBOOTSTRAP --no-check-gpg --foreign --include="$DEBOOTSTRAP_INCLUDE_PACKAGES" --exclude="powerpc-utils" --arch "$ARCH" "$RELEASE" "$TARGET" "file://$SOURCE_DIR"
+else
+    $DEBOOTSTRAP --no-check-gpg --foreign --include="$DEBOOTSTRAP_INCLUDE_PACKAGES" --exclude="powerpc-utils" --arch "$ARCH" "$RELEASE" "$TARGET" "$SOURCE_HTTP"
+fi
 
 mkdir -p "$TARGET/usr/bin"
 cp "$QEMU_STATIC" "$TARGET"/usr/bin/
 
+#if [ -z "$SOURCE_ISO" ]; then # we have a HTTP source
 LANG=C.UTF-8 /usr/sbin/chroot "$TARGET" /debootstrap/debootstrap --second-stage
+#fi
 
-if [ -d $OURPATH/overlay/fs ]; then
+if [ -d $CONFIG_DIR/overlay/fs ]; then
 	echo "Applying fs overlay"
-	cp -vR $OURPATH/overlay/fs/* "$TARGET"
+	cp -vR $CONFIG_DIR/overlay/fs/* "$TARGET"
 fi
 
 mv linux-*.deb "$TARGET/tmp"
@@ -171,48 +218,85 @@ if [ -f fix-missing-ports/*.deb ]; then
 	mkdir -p "$TARGET/tmp/fix"
 	cp fix-missing-ports/*.deb "$TARGET/tmp/fix"
 fi
-rm linux-upstream*
+rm -f linux-upstream*
 
 mkdir -p "$TARGET/dev/mapper"
 
 cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
-	#!/bin/bash
+	#!/bin/bash -e
 
-	export LANGUAGE=en_US.UTF-8
-	export LANG=en_US.UTF-8
-	export LC_ALL=en_US.UTF-8
+	export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true
+	export LC_ALL=C LANGUAGE=C LANG=C
+
+    # fstab
+    cat <<-FSTABEOF > /etc/fstab
+        # <file system>	<mount point>	<type>	<options>			<dump>	<pass>
+        #UUID=$ROOTUUID	/		ext4	defaults			0	1
+		#UUID=$BOOTUUID	/boot		ext2	defaults,sync,nosuid,noexec	0	2
+        /dev/sda2	/		ext4	defaults			0	1
+        /dev/sda1	/boot	ext2    defaults,sync,nosuid,noexec     0       2
+    	proc		/proc		proc	defaults			0	0
+    	none		/var/log	tmpfs	size=30M,mode=755,gid=0,uid=0	0	0
+	FSTABEOF
+
+    mount -t proc /proc
+    mount -t sysfs sys /sys
+    mount udev -t devtmpfs /dev
+
+    mkdir -p /usr/local
+
+	# apt sources
+    >/etc/apt/sources.list
+	# Test if local iso present
+	DEBIAN_ISO=\$(ls /usr/share/dpkg/debian-*.iso 2>&1)
+	if [ -n "\$DEBIAN_ISO" ]; then
+		mkdir -p /mnt/iso    	
+		mount -o loop,ro \$DEBIAN_ISO /mnt/iso
+		cat <<-SOURCESEOF >> /etc/apt/sources.list
+			deb [trusted=yes] file:/mnt/iso $RELEASE main
+		SOURCESEOF
+	fi
+	# Enable standard HTTP sources
+	cat <<-SOURCESEOF >> /etc/apt/sources.list
+		deb $SOURCE_HTTP $RELEASE main contrib non-free non-free-firmware
+		deb-src $SOURCE_SRC $RELEASE main contrib non-free non-free-firmware
+	SOURCESEOF
+
+	echo "$TARGET" > etc/hostname
+	echo "127.0.1.1	$TARGET" >> /etc/hosts
+
+	export LANGUAGE="en_US.UTF-8"
+	export LANG="en_US.UTF-8"
+	export LC_ALL="en_US.UTF-8"
+	echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+    /usr/sbin/locale-gen
+	export LC_ALL="en_US.UTF-8"
+    dpkg-reconfigure locales
+    update-locale LC_ALL=en_US.UTF-8
 
 	. /etc/profile
 
-	#apt
-	cat <<-SOURCESEOF > /etc/apt/sources.list
-	deb $SOURCE $RELEASE main contrib non-free
-	deb-src $SOURCE_SRC $RELEASE main contrib non-free
-	SOURCESEOF
-
-	# fstab
-	cat <<-FSTABEOF > /etc/fstab
-		# <file system>	<mount point>	<type>	<options>			<dump>	<pass>
-		#UUID=$ROOTUUID	/		ext4	defaults			0	1
-		#UUID=$BOOTUUID	/boot		ext2	defaults,sync,nosuid,noexec	0	2
-		/dev/sda2	/		ext4	defaults			0	1
-		/dev/sda1	/boot	ext2    defaults,sync,nosuid,noexec     0       2
-		proc		/proc		proc	defaults			0	0
-		none		/var/log	tmpfs	size=30M,mode=755,gid=0,uid=0	0	0
-	FSTABEOF
-
-	echo "$TARGET" > etc/hostname
-	echo "127.0.1.1	$TARGET" >> /etc/host
-
 	# Networking
+	mkdir -p /etc/network
 	cat <<-NETOF > /etc/network/interfaces
 		auto lo
-
+        # This file describes the network interfaces available on your system
+		# and how to activate them. For more information, see interfaces(5).
+		source /etc/network/interfaces.d/*
+		# The loopback network interface
+		auto lo
 		iface lo inet loopback
-
+	NETOF
+	mkdir -p /etc/network/interfaces.d
+	cat <<-NETOF > /etc/network/interfaces.d/eth0
 		allow-hotplug eth0
 		iface eth0 inet dhcp
 		iface eth0 inet6 auto
+	NETOF
+	cat <<-NETOF > /etc/network/interfaces.d/end0
+		allow-hotplug end0
+		iface end0 inet dhcp
+		iface end0 inet6 auto
 	NETOF
 
 	# Debian unattented settings
@@ -224,9 +308,9 @@ cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
 
 	( export DEBIAN_FRONTEND=noninteractive; debconf-set-selections /tmp/debconf.set )
 
-	echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+	#echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+	#/usr/sbin/locale-gen
 
-	/usr/sbin/locale-gen
 	# Set root password...
 	echo "root:$ROOT_PASSWORD" | /usr/sbin/chpasswd
 	echo 'RAMTMP=yes' >> /etc/default/tmpfs
@@ -243,19 +327,23 @@ cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
 
 	cat <<-FWCONF > /etc/fw_env.config
 	# MTD device name	Device offset	Env. size	Flash sector size	Number of sectors
-	/dev/mtd1		0x0000		0x1000		0x1000			1
-	/dev/mtd1		0x1000		0x1000		0x1000			1
+	/dev/mtd1		    0x0000		    0x1000		0x1000			    1
+	/dev/mtd1		    0x1000		    0x1000		0x1000			    1
 	FWCONF
 
 	# Delete "existing" MD arrays... These have been copied from the Host system
 	# They don't belong into this image
-	sed -i '/#\ definitions\ of\ existing\ MD\ arrays/,/^$/d' /etc/mdadm/mdadm.conf
+
+	if [ -f "/etc/mdadm/mdadm.conf" ]; then
+		sed -i '/#\ definitions\ of\ existing\ MD\ arrays/,/^$/d' /etc/mdadm/mdadm.conf
+	fi
 
 	echo "overlay" >> /etc/initramfs-tools/modules
 	touch /disable-root-ro
 
 	rm -f /etc/dropbear/dropbear_*_host_key
-	rm -f /etc/dropbear-initramfs/dropbear_*_host_key
+	rm -f /etc/dropbear-initramfs/dropbear_*_host_key	# Debian 11 (?)
+	rm -f /etc/dropbear/initramfs/dropbear_*_host_key	# Debian 12	
 
 	# install kernel image (mostly for the modules)
 	dpkg -i /tmp/linux-*deb
@@ -266,15 +354,27 @@ cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
 
 	# First, try to fix bad packages dependencies
 	apt install -f -y
+	apt update
 
 	apt install -y $APT_INSTALL_PACKAGES
 
 	# If a root-keyfile is already in place. Don't change the SSH Default password setting for root
 	[[ -f /root/.ssh/authorized_keys ]] || sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|g' /etc/ssh/sshd_config
 
+	# Make it possible to login to cockpit as root... by deleting the "root" user by overwriting that file
+	echo "# List of users which are not allowed to login to Cockpit" > /etc/cockpit/disallowed-users
+
 	# Configure first_boot
-	update-rc.d first_boot defaults
-	update-rc.d first_boot enable
+	#update-rc.d first_boot defaults
+	#update-rc.d first_boot enable
+	chmod 744 /etc/init.d/first_boot
+	chmod 664 /etc/systemd/system/first_boot.service
+	systemctl enable first_boot
+
+	# Configure the proper ssh server	
+	if [ "$SSH_SERVER" == "openssh" ]; then 
+		systemctl disable dropbear
+	fi
 
 	# ... but make it so, that root has to change it on the first login
 	# (This hopefully unbreaks dnsmasq install)
@@ -297,16 +397,32 @@ cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
 	rm -f /etc/ssh/ssh_host_*
 
 	# Enable tmpfs on /tmp
-	systemctl enable /usr/share/systemd/tmp.mount
+    systemctl enable /usr/share/systemd/tmp.mount
 
+	# Delete ISO image
+	if [ -n "\$DEBIAN_ISO" ]; then
+		echo "Unmounting local repository"
+		umount /mnt/iso
+		rm -f \$DEBIAN_ISO
+		rm -f /usr/shar/dpkg/debian*.iso
+		# Comment out local repository
+		sed -i '1s/^/#/' /etc/apt/sources.list
+	fi
+
+	echo "Install script terminated"
 	# Allow for better compression by NULLING all the free space on the drive
 	rm /tmp/install-script.sh
+
 INSTALLEOF
+
+#read -p "Press any key to resume ..."
 
 chmod a+x "$TARGET/tmp/install-script.sh"
 LANG=C.UTF-8 /usr/sbin/chroot "$TARGET" /tmp/install-script.sh
+#DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C LANGUAGE=C LANG=C /usr/sbin/chroot "$TARGET" /tmp/install-script.sh
 
 sleep 2
+#read -p "Press any key to resume ..."
 
 /bin/umount -A -R -l "$TARGET"
 
@@ -322,7 +438,7 @@ sleep 2
 }
 
 # Clean up loop devices and device mappings
-cleanup_mappings
+cleanup
 
 [[ $MAKE_RAID ]] && {
 	# Do this at the end. This is because if we start with the

@@ -2,35 +2,60 @@
 
 ## Introduction
 
-This project's build.sh generates an adapted Debian Sid/Unstable (as it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian to fix a few defects and to integrate my custom kernels for MyBookLive.  All credits for the Debian image go to Christian Lamparter aka chunkeey.
+This project's build.sh generates an adapted Debian Sid/Unstable (as it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian with following differences:
+- Integration of custom MBL drivers for increased performance
+- Move from unstable (daily) snapshots to a more controlled snapshot taking during Debian 12 release freeze (Debian 12 NETINST ISO)
+- Introduction of a configuration directory for all configuration files
+- Additional tools to customize and/or extend the Debian 12 ISO
+- A very small number of changes/fixes (e.g. Dropbear, first boot).
+
+All credits for the installation process for the Debian image go to Christian Lamparter aka chunkeey.
 
 Big parts of this generator code have been adapted from the [npn2-debian](https://github.com/riptidewave93/npn2-debian) project.
 
 ## Expectations/Warnings
 
-The current build process uses Debian Sid/Unstable, which is not only a possibly unstable build but also a frequenty changing release.  Hence it is very well possible to have a perfectly running build one day and a bad, eventually non-booting, image the next.
+The new build process moves away from exclusive use of the Debian Sid/Unstable repository, which is not only a possibly unstable build but also a daily/frequently changing release.
+ 
+To mitigate this issue, the base OS installation is now being performed from a Debian 12 PowerPC ISO image that is the result of a snapshot taken during the Debian 12 release freeze week.
+
+This approach should provide following advantages:
+- A more coherent and stable release (versus dialy snapshots)
+- Repeatable installation quality/behavior
+- Ability to provide updated ISO's e.g. based on newer snapshots that have been tested as reliable
+
+That said, Debian 12 for PowerPC remains an unsupported and largely untested release.  All add-on packages (e.g. Samba) are still installed from the online, unstable repository.
+At the same time, users retain the full flexibility to update the whole system to the very latest versions, update selected packages (e.g. for security reasons) or install specific versions of certain packages. 
+
 
 ## Requirements
-A working and up-to-date Debian build (virtual) machine with 20GiB+ of free space, 4GB of memory and root access (preferred).   With less than 4GB of memory there will most likely be errors during the Git clone of the Linux Kernel (might be resolved with setting GIT parameters).
-Alternatively, any recent Debian or Ubuntu system will work (e.g. Linux Mint) too, but might not be as clean (the scripts currently remove all loop devices so that may impact your system). 
+A working and up-to-date, Linux development/build virtual system with 20GiB+ of free space, 8GB of memory and root access (preferred).   With less than 4GB of memory there will most likely be errors during the Git clone of the Linux Kernel (might be resolved with setting GIT parameters).
 
+Any recent Debian or Ubuntu physical system will also work (e.g. Linux Mint 20+), but might not be without risk: 
+- the scripts currently remove all loop devices so that may impact your system
+- occasionally a reboot might be required when running out of loop devices (on some systems)
+- a defect in a script could lead to accidental removal of data!
+
+When using a physical server, make sure you have a **FULL BACKUP ALL YOUR DATA!**
 To ensure your VM or system has all the needed build packages, make sure your package index is up to date `# apt update` before installing the following packages on your Debian build host:
 
 `# apt install bc binfmt-support build-essential debootstrap device-tree-compiler dosfstools fakeroot git kpartx lvm2 parted python-dev python3-dev qemu qemu-user-static swig wget u-boot-tools gdisk fdisk uuid-runtime rsync zerofree bison flex libssl-dev gcc-10-powerpc-linux-gnu gcc-compiler-powerpc-linux-gnu binutils-powerpc-linux-gnu`
 
 ## Preparation and personalization
-In "./build.env"
-- Provide your GitHub email address: GIT_EMAIL_ADDRESS (mandatory)
-- Change the desired kernel release: LINUX_KERNEL_VERSION (optional)
-- Add/delete packages to DEBOOTSTRAP_INCLUDE_PACKAGES and APT_INSTALL_PACKAGES (optional)
-- Change root password : ROOT_PASSWORD (optional)
-- Change data format: DATE (optional)
+In "./config/build.env", it is required to at least review/change following settings (in the form of build variables)
+
+- Provide your GitHub email address: `GIT_EMAIL_ADDRESS` (**mandatory**)
+- Change the desired kernel release: `LINUX_KERNEL_VERSION` (optional, default is 6.4.14)
+- Add/delete packages to `DEBOOTSTRAP_INCLUDE_PACKAGES` and `APT_INSTALL_PACKAGES` (optional)
+- Change initial root password : `ROOT_PASSWORD` (optional)
+- Change date format: DATE (optional)
 
 ## Build
 - Just run `sudo ./build.sh`. 
 - Completed builds output to the project root directory as `Debian-powerpc-unstable-YYYYMMDD-HHMM-GPT.img.gz`
 
-## Advanced customization
+## Advanced customization and problem resolution
+- The Debian 12 ISO is mounted under `/mnt/iso`
 - The kernel config file is located in `overlay/kernel`, kernel patches are located in `patches/kernel`
 - Within these locations the kernel build script will look in sequence to:
     - `${LINUX_VER}` folder (e.g. `5.17.14`)
@@ -49,7 +74,13 @@ There are multiple ways to get the image onto the device.
 ### Write the image onto the HDD by disassembling
 This is the prefered method for the MyBook Live Duo. As it's as easy as opening the drive lid and pulling the HDD out of the enclosure. On the MyBook Live Single, this requires to fully disassemble the device in order to extract the HDD.
 
-Once you have the HDD extracted, connect it to a PC and make a backup of it. After the backup was successfully completed and verified, you should zap out the existing GPT+MBR structures `gfdisk /dev/sdX` on that disk (look there in the expert option menu) and then you can uncompress the image onto the HDD. For example: `# gunzip -d -c Debian-powerpc-*-GPT.img.gz > /dev/sdX`... followed up by a `sync` to make sure everything is written to the HDD.
+Once you have the HDD extracted, connect it to a PC and make a backup of it. After the backup was successfully completed and verified, you should zap out the existing GPT+MBR structures `gfdisk /dev/sdX` on that disk (look there in the expert option menu) and then you can uncompress the image onto the HDD. For example: 
+```
+zcat Debian-powerpc-*-GPT.img.gz > /dev/sdX`
+sync
+```
+
+Use `sync` to make sure everything is effectively written to the HDD.
 
 ### Over the SSH-Console
 For this method, you have to gain root access to the MyBook Live via SSH by any means necessary.
@@ -58,14 +89,16 @@ So be prepared to disassemble the device.
 
 To write the image onto the MyBook Live's drive, you can do it over the same network by executing:
 
-`# cat Debian-powerpc-*-GPT.img.gz | ssh root@$MYBOOKLIVEADDRESS 'gunzip -d -c > /dev/sda'`
+```
+cat Debian-powerpc-*-GPT.img.gz | ssh root@$MYBOOKLIVEADDRESS 'zcat > /dev/sdX'
+```
 
-`zcat > /dev/sda` could be used in place of `gunzip -d -c > /dev/sda`
+Alternatively, `gunzip -d -c` could be used in place of `zcat`.
 
 It's also possible (but it's discouraged because you can end up even more so with a bricked
 device) to simply copy the image onto the HDD (via the provided standard access in the vendor
 NAS firmware) and execute `# gunzip -c /path/to/Debian*.img.gz > /dev/sda` on the ssh shell of
-the MyBook Live in order to write it directly onto /dev/sda.
+the MyBook Live in order to write it directly onto /dev/sdX.
 
 After the image has been written, remove and reinsert the powerplug to do a instant reset.
 The MyBook Live should then boot into a vanilla Debian Sid/Unstable.
@@ -75,19 +108,21 @@ The MyBook Live should then boot into a vanilla Debian Sid/Unstable.
 For access and administration, the image comes preinstalled with the [cockpit](https://cockpit-project.org/) web interface at [https://mbl-debian](https://mbl-debian).
 SSH access is also available. Though, caution should be exercised. Because to make the first login possible when no serial cable has been attached, SSH will allow
 password login for root, when no authorized_keys file is placed in `/root/.ssh/`.
+In the case SSH is non-functional, you can obtain a terminal windows via the `cockpit` interface.
 
 ## Notes
-- The default root password is "debian" (see ROOT_PASSWORD variable in the build.sh script).
-- The default hostname is "mbl-debian".
-- This image will initialize the swap on the first boot and resize the GPT to fit the HDD.
+- The default root password is "debian" (see ROOT_PASSWORD variable in the `build.env` script).
+- The default hostname is determined by the `TARGET` variable and defaults to `mbl-debian`.
+- This image will initialize the swap on the first boot and resize the GPT to fit the size of the HDD.
 - All Debian packages are directly pulled from the debian server. This is great since, the programs are up-to-date, but they can also be problems because of this. Be prepared to handle/fix or work-around your own problems.
-
-## KNOWN ISSUES
-- There are two SSH packages installed: DROPBEAR and OpenSSH, rendering DROPBEAR inoperable. Ideally DROPBEAR should be used but OpenSSH is pulled in via a package dependency.   You can use COCKPIT to fix this manually.
+- Dropbear is be the default SSH server, but can be changed to openssh via the `SSH-SERVER` variable. Dropbear is more targetted to embedded systems and has a smaller footprint, but lacks `SFTP` support. 
 
 ## RECENT CHANGES
 - The BOOT partition is now 256MB in size and can fit multiple kernels.
 - Add zerofree and rsync as packages
 - The NOR flash is now working (fw_printenv, fw_setenv)
 - Support for custom/small initramfs
+- Support for Debian 12
+- Support for local repositories (Debian 12 Netinst ISO)
+- Tool for adding packages to the ISO/local repository (`bin\package`)
 

@@ -68,6 +68,7 @@
 			function = LED_FUNCTION_POWER;
 			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&GPIO1 5 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
 		};
 
 		led-2 {
@@ -83,7 +84,7 @@
 		poll-interval = <60>;	/* 3 * 20 = 60ms */
 		autorepeat;
 
-		button {
+		button-restart {
 			label = "Reset button";
 			linux,code = <KEY_RESTART>;
 			gpios = <&GPIO2 2 GPIO_ACTIVE_LOW>;
@@ -125,29 +126,53 @@
 
 &NOR {
 	status = "okay";
-	compatible = "jedec-flash";
+	compatible = "amd,s29gl512n","jedec-flash";
 	bank-width = <1>;
 	reg = <0x00000000 0x00000000 0x00080000>;
-	#address-cells = <1>;
-	#size-cells = <1>;
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
 
-	partition@0 {
-		/* Part of bootrom - Don't use it without a jump */
-		label = "bootrom";
-		reg = <0x00000000 0x0001e000>;
-		read-only;
-	};
+		partition@0 {
+			/* Part of bootrom - Don't use it without a jump */
+			label = "bootrom";
+			reg = <0x00000000 0x0001e000>;
+			read-only;
+		};
+		partition@1e000 {
+			compatible = "fixed-partitions";
+			reg = <0x0001e000 0x00002000>;
+			label = "u-boot-env";
+			#address-cells = <1>;
+			#size-cells = <1>;
 
-	partition@1e000 {
-		label = "env";
-		reg = <0x0001e000 0x00002000>;
-	};
+			partition@0 {
+				compatible = "u-boot,env-redundant-bool";
+				reg = <0x00000000 0x00001000>;
+				label = "u-boot-env-1";
 
-	partition@20000 {
-		label = "uboot";
-		reg = <0x00020000 0x00050000>;
-		read-only;
-	};
+				ethaddr {
+				};
+			};
+/*
+			partition@1000 {
+				compatible = "u-boot,env-redundant-bool";
+				reg = <0x00001000 0x00001000>;
+				label = "u-boot-env-2";
+
+				mac1: ethaddr {
+				};
+			};
+*/
+		};
+
+		partition@20000 {
+			label = "uboot";
+			reg = <0x00020000 0x00050000>;
+			read-only;
+		};
+    };
 };
 
 &EMAC0 {

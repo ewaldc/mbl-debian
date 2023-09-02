@@ -1,0 +1,12 @@
+--- a/arch/powerpc/Makefile.orig	2022-07-14 19:38:05.802261000 +0000
++++ b/arch/powerpc/Makefile	2022-07-14 19:39:28.118203110 +0000
+@@ -238,7 +238,8 @@
+ KBUILD_CFLAGS		+= $(call cc-option,-mno-string)
+ 
+ cpu-as-$(CONFIG_40x)		+= -Wa,-m405
+-cpu-as-$(CONFIG_44x)		+= -Wa,-m440
++#cpu-as-$(CONFIG_44x)		+= -Wa,-m440
++cpu-as-$(CONFIG_44x)		+= -mcpu=464fp -Wa,-m464
+ cpu-as-$(CONFIG_ALTIVEC)	+= $(call as-option,-Wa$(comma)-maltivec)
+ cpu-as-$(CONFIG_E500)		+= -Wa,-me500
+ 

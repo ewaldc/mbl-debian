@@ -1,0 +1,10 @@
+[Unit]
+Description=My First Boot Service Script
+#ConditionFirstBoot=yes
+
+[Service]
+Type=oneshot
+ExecStart=/etc/init.d/first_boot
+
+[Install]
+WantedBy=multi-user.target
