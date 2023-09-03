@@ -56,7 +56,7 @@ In "./config/build.env", it is required to at least review/change following sett
 - Change initial root password : `ROOT_PASSWORD` (optional)
 - Change date format: DATE (optional)
 
-Download the customized Debian 12 NETINST ISO image
+Download the customized Debian 12 NETINST ISO image:
 ```
 (cd source; ./download_debian-12.0.0-powerpc-MBL-NETINST_iso.sh)
 ```
@@ -122,7 +122,7 @@ password login for root, when no authorized_keys file is placed in `/root/.ssh/`
 In the case SSH is non-functional, you can obtain a terminal windows via the `cockpit` interface.
 
 ## Notes
-- The default root password is "debian" (see ROOT_PASSWORD variable in the `build.env` script).
+- The default root password is `debian` (see ROOT_PASSWORD variable in the `build.env` script).
 - The default hostname is determined by the `TARGET` variable and defaults to `mbl-debian`.
 - This image will initialize the swap on the first boot and resize the GPT to fit the size of the HDD.
 - All Debian packages are directly pulled from the debian server. This is great since, the programs are up-to-date, but they can also be problems because of this. Be prepared to handle/fix or work-around your own problems.

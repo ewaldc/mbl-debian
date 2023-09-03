@@ -173,9 +173,8 @@ mkdir -p "$TARGET/tmp"
 mkdir -p "$TARGET/boot"
 mount "$BOOTP" "$TARGET/boot" -t ext2
 mkdir -p "$TARGET/boot/boot"
-cp $CONFIG_DIR/dts/wd-mybooklive.dtb "$TARGET/boot/apollo3g.dtb"
-cp $CONFIG_DIR/dts/wd-mybooklive.dtb.tmp "$TARGET/boot/apollo3g.dts"
-if [ "$SSH_SERVER" == "openssh" ]; then APT_INSTALL_PACKAGES+=" openssh-server"; fi
+cp ${CONFIG_DIR}/dts/wd-mybooklive.dtb "$TARGET/boot/apollo3g.dtb"
+cp ${CONFIG_DIR}/dts/wd-mybooklive.dtb.tmp "$TARGET/boot/apollo3g.dts"
 
 ROOTBOOT="UUID=$ROOTUUID"
 
@@ -214,9 +213,9 @@ if [ -d $CONFIG_DIR/overlay/fs ]; then
 fi
 
 mv linux-*.deb "$TARGET/tmp"
-if [ -f fix-missing-ports/*.deb ]; then
+if [ -f ${CONFIG_DIR}/fix-missing-ports/*.deb ]; then
 	mkdir -p "$TARGET/tmp/fix"
-	cp fix-missing-ports/*.deb "$TARGET/tmp/fix"
+	cp ${CONFIG_DIR}/fix-missing-ports/*.deb "$TARGET/tmp/fix"
 fi
 rm -f linux-upstream*
 
@@ -372,9 +371,9 @@ cat <<-INSTALLEOF > "$TARGET/tmp/install-script.sh"
 	systemctl enable first_boot
 
 	# Configure the proper ssh server	
-	if [ "$SSH_SERVER" == "openssh" ]; then 
-		systemctl disable dropbear
-	fi
+	if [ "$SSH_SERVER" == "openssh" ]; then systemctl disable dropbear
+    else systemctl disable ssh
+ 	fi
 
 	# ... but make it so, that root has to change it on the first login
 	# (This hopefully unbreaks dnsmasq install)
@@ -431,10 +430,10 @@ sleep 2
 
 [[ $MAKE_RAID ]] && {
 	# super 1.0 is between 8k and 12k
-	dd if=boot-md0-raid1 of="$BOOTP" bs=1K seek=$(( $BOOTSIZE / 1024 - 8 )) status=noxfer
+	dd if=${CONFIG_DIR}/boot-md0-raid1 of="$BOOTP" bs=1K seek=$(( $BOOTSIZE / 1024 - 8 )) status=noxfer
 
 	# super 0.9 is at 64K
-	dd if=root-md1-raid1 of="$ROOTP" bs=1k seek=$(( $ROOTSIZE / 1024 - 64)) status=noxfer
+	dd if=${CONFIG_DIR}/root-md1-raid1 of="$ROOTP" bs=1k seek=$(( $ROOTSIZE / 1024 - 64)) status=noxfer
 }
 
 # Clean up loop devices and device mappings
