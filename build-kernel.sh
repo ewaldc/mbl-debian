@@ -80,7 +80,7 @@ fi
 
 if [[ -d "$CONFIG_DIR/overlay/kernel/${LINUX_SV}/" ]]; then
 	echo "Applying kernel overlay for version ${LINUX_SV}"
-	cp -vr -- "$CONFIG_DIR/overlay/kernel/${LINUX_SV}/"* "$LINUX_DIR" || echo bad
+	cp -vr -- "$CONFIG_DIR/overlay/kernel/${LINUX_SV}/" "$LINUX_DIR" || echo bad
 fi
 #elif [[ -d "$CONFIG_DIR/overlay/kernel/" ]]; then
 #	echo "Applying generic kernel overlay"

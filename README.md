@@ -5,8 +5,8 @@
 This project's build.sh generates an adapted Debian Sid/Unstable (as it still has the powerpc target today) image for the Western Digital MyBook Live Series devices.  This repository is forked from https://github.com/chunkeey/mbl-debian with following differences:
 - Integration of custom MBL drivers for increased performance
 - Move from unstable (daily) snapshots to a more controlled snapshot taking during Debian 12 release freeze (Debian 12 NETINST ISO)
-- Introduction of a configuration directory for all configuration files
-- Additional tools to customize and/or extend the Debian 12 ISO
+- Introduction of a configuration directory for all configuration files/directories
+- Additional tools to build or extend the provide Debian 12 custom ISO or build your own (`package.sh')
 - A very small number of changes/fixes (e.g. Dropbear, first boot).
 
 All credits for the installation process for the Debian image go to Christian Lamparter aka chunkeey.
@@ -135,5 +135,5 @@ In the case SSH is non-functional, you can obtain a terminal windows via the `co
 - Support for custom/small initramfs
 - Support for Debian 12
 - Support for local repositories (Debian 12 Netinst ISO)
-- Tool for adding packages to the ISO/local repository (`bin\package`)
+- Tool for adding packages to the ISO/local repository (`package.sh`)
 
