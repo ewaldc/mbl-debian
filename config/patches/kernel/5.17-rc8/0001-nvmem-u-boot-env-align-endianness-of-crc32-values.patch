@@ -1,0 +1,46 @@
+From 41c36aea519a10914b54708e94dcc120ac488c47 Mon Sep 17 00:00:00 2001
+From: INAGAKI Hiroshi <musashino.open@gmail.com>
+Date: Mon, 13 Feb 2023 22:23:51 +0900
+Subject: [PATCH] nvmem: u-boot-env: align endianness of crc32 values
+
+This patch fixes crc32 error on Big-Endianness system by conversion of
+calculated crc32 value.
+
+Little-Endianness system:
+
+  obtained crc32: Little
+calculated crc32: Little
+
+Big-Endianness system:
+
+  obtained crc32: Little
+calculated crc32: Big
+
+log (APRESIA ApresiaLightGS120GT-SS, RTL8382M, Big-Endianness):
+
+[    8.570000] u_boot_env 18001200.spi:flash@0:partitions:partition@c0000: Invalid calculated CRC32: 0x88cd6f09 (expected: 0x096fcd88)
+[    8.580000] u_boot_env: probe of 18001200.spi:flash@0:partitions:partition@c0000 failed with error -22
+
+Fixes: f955dc144506 ("nvmem: add driver handling U-Boot environment variables")
+
+Signed-off-by: INAGAKI Hiroshi <musashino.open@gmail.com>
+---
+ drivers/nvmem/layouts/u-boot-env.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/nvmem/layouts/u-boot-env.c b/drivers/nvmem/layouts/u-boot-env.c
+index 731e6f4f12b2..c555049f9e29 100644
+--- a/drivers/nvmem/layouts/u-boot-env.c
++++ b/drivers/nvmem/layouts/u-boot-env.c
+@@ -149,7 +149,7 @@ int u_boot_env_parse(struct device *dev, struct nvmem_device *nvmem,
+ 	data_len = dev_size - data_offset;
+ 
+ 	calc = crc32(~0, buf + crc32_data_offset, crc32_data_len) ^ ~0L;
+-	if (calc != crc32) {
++	if (calc != crc32 || calc != swab32(crc32)) {
+ 		dev_err(dev, "Invalid calculated CRC32: 0x%08x (expected: 0x%08x)\n", calc, crc32);
+ 		err = -EINVAL;
+ 		goto err_kfree;
+-- 
+2.45.2
+

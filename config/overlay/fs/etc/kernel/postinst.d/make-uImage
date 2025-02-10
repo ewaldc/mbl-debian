@@ -1,0 +1,22 @@
+#!/bin/bash
+
+version="$1"
+
+vmlinux="/boot/vmlinux-$version"
+output="/boot/uImage-$version"
+
+tmpfile=$(/bin/mktemp)
+trap "( rm -f \"$tmpfile\" \"$tmpfile.gz\"; exit 1 )" TERM QUIT
+
+OBJCOPY=/usr/bin/objcopy
+
+$OBJCOPY -O binary -R .reginfo -R .notes -R .note -R .comment \
+	 -R .mdebug -R .note.gnu.build-id -S "$vmlinux" "$tmpfile" > /dev/null
+
+/bin/gzip -9 "$tmpfile"
+
+/usr/bin/mkimage -A powerpc -O linux -T kernel -C gzip \
+		 -a 0x00000000 -e 0x00000000 \
+		 -n "MyBook Live Linux $version" -d "$tmpfile.gz" "$output" > /dev/null
+
+rm -f $tmpfile.gz

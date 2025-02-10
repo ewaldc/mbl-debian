@@ -1,0 +1,20 @@
+--- a/drivers/mtd/chips/cfi_cmdset_0002.c
++++ b/drivers/mtd/chips/cfi_cmdset_0002.c
+@@ -114,13 +114,13 @@
+  * supported. This is indicated by Bit[1:0] of SoftwareFeatures field in
+  * CFI Primary Vendor-Specific Extended Query table 1.5
+  */
+-static int cfi_use_status_reg(struct cfi_private *cfi)
++static inline int cfi_use_status_reg(struct cfi_private *cfi)
+ {
+ 	struct cfi_pri_amdstd *extp = cfi->cmdset_priv;
+ 	u8 poll_mask = CFI_POLL_STATUS_REG | CFI_POLL_DQ;
+ 
+-	return extp->MinorVersion >= '5' &&
+-		(extp->SoftwareFeatures & poll_mask) == CFI_POLL_STATUS_REG;
++    return (extp) ? extp->MinorVersion >= '5' &&
++		(extp->SoftwareFeatures & poll_mask) == CFI_POLL_STATUS_REG : 0;
+ }
+ 
+ static void cfi_check_err_status(struct map_info *map, struct flchip *chip,
+

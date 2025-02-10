@@ -1,0 +1,25 @@
+build.info
+
+gdisk xz-utils dropbear-initramfs busybox-static u-boot-tools bash-completion parted file aptitude dropbear bzip2 console-common libubootenv-tool bsdextrautils device-tree-compiler
+
+libyaml-0-2 libncursesw6 aptitude-common libboost-iostreams1.74.0 libcwidget4 libsigc++-2.0-0v5 libxapian30
+
+fuse3 nfs-common needrestart zip unzip vim screen htop ethtool iperf3 netcat-traditional
+net-tools curl wget systemd-timesyncd smartmontools hdparm nfs-common nfs-kernel-server rpcbind rsync ntfs-3g bcache-tools duperemove thin-provisioning-tools udisks2 udisks2-btrfs unattended-upgrades watchdog lm-sensors libzst
+
+ibzstd1 zlib1g cron-daemon-common systemd
+ 2010  bin/package -f systemd-dev
+ 2011  bin/package -g
+ 2012  bin/package -f libc
+ 2013  bin/package -f systemd-dev
+ 2014  bin/package -a systemd-dev
+ 2015  bin/package -g
+ 2016  bin/package -a libp11-kit0
+ 2017  bin/package -g
+ 2018  bin/package -a vim-common
+ 2019  bin/package -a dropbear-bin
+ 2020  bin/package -g
+ 2021  bin/package -a libtomcrypt1
+ 2022  bin/package -a console-data
+ 2023  bin/package -a libtommath1
+samba cockpit telnet
